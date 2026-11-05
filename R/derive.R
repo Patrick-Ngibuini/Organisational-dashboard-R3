@@ -1,0 +1,181 @@
+# Derived values. Nothing here is stored in the database.
+
+#' Projects with effective status and derived columns
+#'
+#' The stored `status` is out of date for several projects, so an effective
+#' status is derived from the dates relative to `ref_date`.
+#'
+#' Note: unlike the sketch in CLAUDE.md this also takes `funds_group`, because
+#' `total_budget` is the sum of those edges.
+#'
+#' @param projects Tibble from [read_projects()].
+#' @param funds_group Tibble from [read_funds_group()].
+#' @param ref_date Reference date.
+#' @return `projects` plus `eff_status`, `status_mismatch`, `mismatch_reason`,
+#'   `total_budget`, `duration_months`, `approved`.
+projects_eff <- function(projects, funds_group, ref_date = Sys.Date()) {
+  ref_date <- as.Date(ref_date)
+  budgets <- funds_group |>
+    dplyr::summarise(total_budget = sum(budget), .by = project) |>
+    dplyr::rename(acronym = project)
+
+  projects |>
+    dplyr::left_join(budgets, by = "acronym") |>
+    dplyr::mutate(
+      total_budget = dplyr::coalesce(total_budget, 0L),
+      eff_status = dplyr::case_when(
+        status %in% c("rejected", "draft", "submitted") ~ status,
+        is.na(start_date) | is.na(end_date) ~ status,
+        ref_date < start_date ~ "approved",
+        ref_date <= end_date ~ "running",
+        TRUE ~ "finished"
+      ),
+      status_mismatch = eff_status != status |
+        (status %in% c("approved", "submitted") & !is.na(start_date) & start_date < ref_date),
+      mismatch_reason = dplyr::case_when(
+        !status_mismatch ~ NA_character_,
+        eff_status == "finished" ~ paste0(status, ", but ended ", end_date),
+        eff_status == "running" ~ paste0(status, ", but started ", start_date),
+        eff_status == "approved" ~ paste0(status, ", but starts ", start_date),
+        TRUE ~ paste0(status, ", but start date ", start_date, " has passed")
+      ),
+      duration_months = as.integer(round(
+        lubridate::time_length(lubridate::interval(start_date, end_date), "month")
+      )),
+      approved = dplyr::case_when(
+        status == "rejected" ~ 0L,
+        status %in% c("approved", "running", "finished") ~ 1L,
+        status == "submitted" ~ 2L,
+        TRUE ~ NA_integer_
+      )
+    )
+}
+
+#' Total group membership per employee
+#'
+#' @param member_of Tibble from [read_member_of()].
+#' @return One row per employee: `employee`, `total_percentage`, `over_100`.
+group_percentage_total <- function(member_of) {
+  member_of |>
+    dplyr::summarise(total_percentage = sum(percentage), .by = employee) |>
+    dplyr::mutate(over_100 = total_percentage > 100)
+}
+
+#' Build the node and edge tables for the network and igraph
+#'
+#' Node ids are prefixed: `emp:`, `grp:`, `skill:`, `proj:`, `comp:`,
+#' `dept:<company>|<name>`, `con:`. The `group` column is a colouring hint:
+#' primary research group for employees, best-funded group for projects,
+#' category for skills, company type for companies, company name for
+#' departments and contacts.
+#'
+#' @param tables Named list from [read_all()].
+#' @param projects_eff Result of [projects_eff()].
+#' @return `list(nodes, edges)`; edges carry `type`, `attr` (text), and for
+#'   project edges the project's `status` and `eff_status`.
+build_graph <- function(tables, projects_eff) {
+  t <- tables
+  dept_id <- \(company, name) paste0("dept:", company, "|", name)
+
+  primary_group <- t$member_of |>
+    dplyr::slice_max(percentage, by = employee, n = 1, with_ties = FALSE) |>
+    dplyr::select(employee, group = research_group)
+  top_funded <- t$funds_group |>
+    dplyr::slice_max(budget, by = project, n = 1, with_ties = FALSE) |>
+    dplyr::select(project, group = research_group)
+  contact_company <- t$works_at |> dplyr::select(external_contact, group = company)
+
+  nodes <- dplyr::bind_rows(
+    t$employee |>
+      dplyr::left_join(primary_group, by = c("email" = "employee")) |>
+      dplyr::transmute(id = paste0("emp:", email), type = "employee",
+                       label = paste(first_name, last_name), group),
+    t$research_group |>
+      dplyr::transmute(id = paste0("grp:", abbreviation), type = "group",
+                       label = abbreviation, group = abbreviation),
+    t$skill |>
+      dplyr::transmute(id = paste0("skill:", tolower(name)), type = "skill",
+                       label = name, group = category),
+    t$project |>
+      dplyr::left_join(top_funded, by = c("acronym" = "project")) |>
+      dplyr::transmute(id = paste0("proj:", acronym), type = "project",
+                       label = acronym, group),
+    t$company |>
+      dplyr::transmute(id = paste0("comp:", name), type = "company",
+                       label = name, group = type),
+    t$company_department |>
+      dplyr::transmute(id = dept_id(company, name), type = "department",
+                       label = name, group = company),
+    t$external_contact |>
+      dplyr::left_join(contact_company, by = c("email" = "external_contact")) |>
+      dplyr::transmute(id = paste0("con:", email), type = "contact",
+                       label = paste(first_name, last_name), group)
+  )
+
+  proj_status <- projects_eff |>
+    dplyr::transmute(from_proj = paste0("proj:", acronym), status, eff_status)
+  with_status <- \(edges, col) {
+    edges |>
+      dplyr::mutate(from_proj = .data[[col]]) |>
+      dplyr::left_join(proj_status, by = "from_proj") |>
+      dplyr::select(-from_proj)
+  }
+
+  edges <- dplyr::bind_rows(
+    t$member_of |>
+      dplyr::transmute(from = paste0("emp:", employee), to = paste0("grp:", research_group),
+                       type = "member_of", attr = paste0(percentage, "%")),
+    t$has_skill |>
+      dplyr::transmute(from = paste0("emp:", employee), to = paste0("skill:", tolower(skill)),
+                       type = "has_skill", attr = as.character(level)),
+    t$works_on |>
+      dplyr::transmute(from = paste0("emp:", employee), to = paste0("proj:", project),
+                       type = "works_on", attr = role) |>
+      with_status("to"),
+    t$funds_group |>
+      dplyr::transmute(from = paste0("proj:", project), to = paste0("grp:", research_group),
+                       type = "funds_group", attr = as.character(budget)) |>
+      with_status("from"),
+    t$participates_in |>
+      dplyr::transmute(from = paste0("con:", external_contact), to = paste0("proj:", project),
+                       type = "participates_in", attr = role) |>
+      with_status("to"),
+    t$works_at |>
+      dplyr::transmute(from = paste0("con:", external_contact), to = dept_id(company, department),
+                       type = "works_at", attr = NA_character_),
+    t$part_of |>
+      dplyr::transmute(from = dept_id(company, department), to = paste0("comp:", company),
+                       type = "part_of", attr = NA_character_)
+  ) |>
+    dplyr::select(from, to, type, attr, status, eff_status)
+
+  list(nodes = nodes, edges = edges)
+}
+
+#' Restrict a graph to the projects selected in the sidebar
+#'
+#' Removes project nodes (and their edges) that are hidden, outside the
+#' status filter, or do not overlap `period`. Projects without dates always
+#' pass the period filter.
+#'
+#' @param graph Result of [build_graph()].
+#' @param projects_eff Result of [projects_eff()].
+#' @param hide_rejected Drop rejected projects.
+#' @param status_filter Effective statuses to keep.
+#' @param period Length-2 Date vector.
+filter_graph <- function(graph, projects_eff, hide_rejected = TRUE,
+                         status_filter = STATUSES, period = NULL) {
+  keep <- projects_eff |>
+    dplyr::filter(eff_status %in% (status_filter %||% character()))
+  if (isTRUE(hide_rejected)) keep <- dplyr::filter(keep, eff_status != "rejected")
+  if (!is.null(period)) {
+    keep <- keep |>
+      dplyr::filter(is.na(start_date) | is.na(end_date) |
+                      (start_date <= period[2] & end_date >= period[1]))
+  }
+  dropped <- paste0("proj:", setdiff(projects_eff$acronym, keep$acronym))
+  list(
+    nodes = dplyr::filter(graph$nodes, !id %in% dropped),
+    edges = dplyr::filter(graph$edges, !from %in% dropped, !to %in% dropped)
+  )
+}
