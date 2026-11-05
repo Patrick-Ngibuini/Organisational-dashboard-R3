@@ -1,0 +1,7 @@
+db/*.sqlite
+.Rhistory
+.RData
+.Rproj.user
+renv/library
+renv/staging
+.DS_Store
