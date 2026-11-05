@@ -1,0 +1,176 @@
+---
+config:
+  layout: elk
+---
+flowchart LR
+  subgraph UI_IN["UI inputs"]
+    I_ref(["input$ref_date"])
+    I_rej(["input$hide_rejected"])
+    I_stat(["input$status_filter"])
+    I_per(["input$period"])
+    I_grp(["input$group"])
+    I_minp(["input$min_projects"])
+    I_cat(["input$skill_cat"])
+    I_maxh(["input$max_holders"])
+    I_prog(["input$programme"])
+    I_send(["input$sim_end"])
+    I_sim(["input$simulate"])
+    I_mon(["input$months"])
+    I_pa(["input$person_a"])
+    I_pb(["input$person_b"])
+    I_mode(["input$path_mode"])
+    I_find(["input$find_path"])
+    I_yr(["input$year_range"])
+    E_net{{"input$network_click"}}
+    E_ct{{"input$contacts_table_rows_selected"}}
+    E_ck{{"input$check_table_rows_selected"}}
+  end
+
+  subgraph SERVER["Server logic"]
+    D_seed[("seed.json")]
+    R_eff("projects_eff()")
+    R_fg("filtered_graph()")
+    O_net[/"observeEvent: store network click"/]
+    O_ct[/"observeEvent: store contact row"/]
+    O_ck[/"observeEvent: store check row"/]
+    S_sel[["selected_node (reactiveVal)"]]
+    O_hl[/"observe: highlight on network (proxy)"/]
+    R_kc("key_contacts()")
+    R_ego("ego_graph()")
+    R_chk("status_check()")
+    R_tl("timeline_data()")
+    R_sk("skill_coverage()")
+    R_bud("budget_split()")
+    R_sim("sim_result() · eventReactive")
+    R_free("free_staff()")
+    R_path("shortest_path() · eventReactive")
+    R_use("skill_use()")
+    R_kpi("kpis()")
+  end
+
+  subgraph UI_OUT["UI outputs"]
+    P_net["output$network · Q2"]
+    P_ego["output$ego_panel · Q2"]
+    P_ct["output$contacts_table · Q1"]
+    P_ck["output$check_table · Q3"]
+    P_tl["output$timeline · Q4"]
+    P_sk["output$skill_matrix · Q5"]
+    P_bud["output$budget_bar · Q6"]
+    P_sim["output$sim_network · Q7"]
+    P_free["output$free_staff · Q8"]
+    P_path["output$path_steps · Q9"]
+    P_use["output$skill_heatmap · Q10"]
+    P_kpi["output$kpi_cards · Q11"]
+    P_yrs["output$kpi_years · Q11"]
+    P_dl["output$download_report · Q11"]
+  end
+
+  %% shared backbone
+  D_seed --> R_eff
+  I_ref --> R_eff
+  D_seed --> R_fg
+  R_eff --> R_fg
+  I_rej --> R_fg
+  I_stat --> R_fg
+  I_per --> R_fg
+  R_fg --> P_net
+
+  %% shared selection (events -> observers -> state)
+  E_net -.->|trigger| O_net
+  E_ct -.->|trigger| O_ct
+  E_ck -.->|trigger| O_ck
+  O_net ==>|writes| S_sel
+  O_ct ==>|writes| S_sel
+  O_ck ==>|writes| S_sel
+  S_sel --> O_hl
+  R_kc --> O_hl
+  R_path --> O_hl
+  O_hl ==>|updates| P_net
+
+  %% Q1 key contacts
+  R_fg --> R_kc
+  I_minp --> R_kc
+  R_kc --> P_ct
+
+  %% Q2 company ego network
+  R_fg --> R_ego
+  S_sel --> R_ego
+  R_ego --> P_ego
+
+  %% Q3 status check
+  R_eff --> R_chk
+  R_chk --> P_ck
+
+  %% Q4 timeline
+  R_eff --> R_tl
+  I_grp --> R_tl
+  I_per --> R_tl
+  S_sel --> R_tl
+  R_tl --> P_tl
+
+  %% Q5 rare skills
+  D_seed --> R_sk
+  I_cat --> R_sk
+  I_maxh --> R_sk
+  R_sk --> P_sk
+
+  %% Q6 budget split
+  R_eff --> R_bud
+  I_prog --> R_bud
+  I_stat --> R_bud
+  R_bud --> P_bud
+
+  %% Q7 what-if: project ends
+  I_sim -.->|trigger| R_sim
+  R_fg --> R_sim
+  S_sel --> R_sim
+  I_send --> R_sim
+  R_sim --> P_sim
+
+  %% Q8 staff available
+  D_seed --> R_free
+  R_eff --> R_free
+  I_grp --> R_free
+  I_mon --> R_free
+  R_free --> P_free
+
+  %% Q9 shortest path
+  I_find -.->|trigger| R_path
+  D_seed --> R_path
+  R_eff --> R_path
+  I_pa --> R_path
+  I_pb --> R_path
+  I_mode --> R_path
+  R_path --> P_path
+
+  %% Q10 skills on running projects
+  D_seed --> R_use
+  R_eff --> R_use
+  I_cat --> R_use
+  R_use --> P_use
+
+  %% Q11 KPIs + export
+  R_eff --> R_kpi
+  I_grp --> R_kpi
+  I_yr --> R_kpi
+  R_kpi --> P_kpi
+  R_kpi --> P_yrs
+  R_kpi --> P_dl
+
+  classDef widget fill:#dbeafe,stroke:#2563eb,color:#111
+  classDef event fill:#fde68a,stroke:#b45309,color:#111
+  classDef data fill:#e5e7eb,stroke:#4b5563,color:#111
+  classDef conductor fill:#dcfce7,stroke:#15803d,color:#111
+  classDef observer fill:#ede9fe,stroke:#6d28d9,color:#111
+  classDef state fill:#fce7f3,stroke:#be185d,color:#111
+  classDef output fill:#ffffff,stroke:#111,color:#111
+  class I_ref,I_rej,I_stat,I_per,I_grp,I_minp,I_cat,I_maxh,I_prog,I_send,I_sim,I_mon,I_pa,I_pb,I_mode,I_find,I_yr widget
+  class E_net,E_ct,E_ck event
+  class D_seed data
+  class R_eff,R_fg,R_kc,R_ego,R_chk,R_tl,R_sk,R_bud,R_sim,R_free,R_path,R_use,R_kpi conductor
+  class O_net,O_ct,O_ck,O_hl observer
+  class S_sel state
+  class P_net,P_ego,P_ct,P_ck,P_tl,P_sk,P_bud,P_sim,P_free,P_path,P_use,P_kpi,P_yrs,P_dl output
+  style UI_IN fill:#fdf4ff,stroke:#d946ef
+  style SERVER fill:#f0fdfa,stroke:#14b8a6
+  style UI_OUT fill:#fff7ed,stroke:#f97316

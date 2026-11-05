@@ -1,0 +1,21 @@
+email,first_name,last_name,job_title,bio,active
+an.claes@example.org,An,Claes,Research lead,Leads DSAI. Fifteen years of applied ML in retail and public sector.,True
+bram.wouters@example.org,Bram,Wouters,Researcher,Explainable AI and model auditing.,True
+charlotte.dewit@example.org,Charlotte,De Wit,Researcher,Forecasting and anomaly detection for energy and logistics data.,True
+dries.maes@example.org,Dries,Maes,Data engineer,"Pipelines, data quality and cloud infrastructure.",True
+els.vermeulen@example.org,Els,Vermeulen,Researcher,NLP for Dutch administrative documents.,True
+femke.jacobs@example.org,Femke,Jacobs,Researcher,Dashboards and data storytelling for local government.,True
+gert.peeters@example.org,Gert,Peeters,Junior researcher,"Recently joined, works on ML model deployment.",True
+hanne.goossens@example.org,Hanne,Goossens,Research lead,Leads HCD. Service design for care and welfare organisations.,True
+ilse.mertens@example.org,Ilse,Mertens,Researcher,"Qualitative user research, digital inclusion of older adults.",True
+jonas.willems@example.org,Jonas,Willems,Designer-researcher,Rapid prototyping and usability testing.,True
+karen.smets@example.org,Karen,Smets,Researcher,Co-creation with citizens and municipalities.,True
+lars.hendrickx@example.org,Lars,Hendrickx,Research lead,Leads SET. Building retrofits and energy communities.,True
+marie.lambrechts@example.org,Marie,Lambrechts,Researcher,Sensor networks and monitoring platforms for buildings.,True
+niels.vandenberghe@example.org,Niels,Van den Berghe,Researcher,Thermal simulation and retrofit advice.,True
+olivia.deconinck@example.org,Olivia,De Coninck,Researcher,Energy data analysis and forecasting of consumption.,True
+pieter.aerts@example.org,Pieter,Aerts,Technician,Installs and maintains sensor hardware.,True
+quinten.dries@example.org,Quinten,Dries,Project officer,"Proposal writing, reporting and budgeting across groups.",True
+rani.sterckx@example.org,Rani,Sterckx,Researcher,Statistics and survey design.,True
+sam.vranken@example.org,Sam,Vranken,Researcher,Left the department in 2024. Worked on early energy community pilots.,False
+tine.cools@example.org,Tine,Cools,Researcher,Accessibility and inclusive interface design.,True

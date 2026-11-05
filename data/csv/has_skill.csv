@@ -1,0 +1,46 @@
+employee,skill,level
+an.claes@example.org,Machine learning,expert
+an.claes@example.org,Python,expert
+an.claes@example.org,Project management,advanced
+bram.wouters@example.org,Explainable AI,expert
+bram.wouters@example.org,Python,advanced
+bram.wouters@example.org,Data visualisation,advanced
+charlotte.dewit@example.org,Time series forecasting,expert
+charlotte.dewit@example.org,Python,advanced
+charlotte.dewit@example.org,Statistics,advanced
+dries.maes@example.org,Data engineering,expert
+dries.maes@example.org,Python,advanced
+els.vermeulen@example.org,Natural language processing,expert
+els.vermeulen@example.org,Python,advanced
+femke.jacobs@example.org,Dashboarding,expert
+femke.jacobs@example.org,Data visualisation,expert
+femke.jacobs@example.org,User research,intermediate
+gert.peeters@example.org,Python,intermediate
+gert.peeters@example.org,Machine learning,intermediate
+hanne.goossens@example.org,Service design,expert
+hanne.goossens@example.org,User research,expert
+hanne.goossens@example.org,Project management,advanced
+ilse.mertens@example.org,User research,expert
+ilse.mertens@example.org,Prototyping,intermediate
+jonas.willems@example.org,Prototyping,expert
+jonas.willems@example.org,User research,advanced
+karen.smets@example.org,Service design,advanced
+karen.smets@example.org,User research,advanced
+lars.hendrickx@example.org,Building physics,expert
+lars.hendrickx@example.org,Energy monitoring,advanced
+lars.hendrickx@example.org,Project management,expert
+marie.lambrechts@example.org,IoT sensors,expert
+marie.lambrechts@example.org,Energy monitoring,expert
+marie.lambrechts@example.org,Python,intermediate
+niels.vandenberghe@example.org,Building physics,advanced
+niels.vandenberghe@example.org,Statistics,intermediate
+olivia.deconinck@example.org,Time series forecasting,advanced
+olivia.deconinck@example.org,Energy monitoring,advanced
+olivia.deconinck@example.org,Python,advanced
+pieter.aerts@example.org,IoT sensors,advanced
+quinten.dries@example.org,Project management,expert
+rani.sterckx@example.org,Statistics,expert
+rani.sterckx@example.org,Data visualisation,intermediate
+sam.vranken@example.org,Energy monitoring,intermediate
+tine.cools@example.org,Prototyping,advanced
+tine.cools@example.org,User research,advanced

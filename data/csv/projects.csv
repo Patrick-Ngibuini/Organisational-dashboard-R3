@@ -1,0 +1,11 @@
+acronym,title,description,funding_programme,status,application_date,approval_date,start_date,end_date
+CITYPULSE,CityPulse: real-time mobility dashboards for Kesselberg,"Dashboards combining traffic sensors, parking and public transport data to support mobility policy.",City innovation fund,running,2023-09-15,2023-12-01,2024-02-01,2025-07-31
+FRESHCAST,FreshCast: demand forecasting to cut food waste in supermarkets,"Time series models per store and product family, integrated in replenishment workflows.",VLAIO TETRA,running,2023-04-10,2023-08-20,2023-10-01,2025-09-30
+XAICARE,Explainable triage support for home-care planning,"Auditable ML models that help planners prioritise home-care visits, with explanations nurses trust.",VLAIO TETRA,running,2024-02-01,2024-06-15,2024-09-01,2026-08-31
+DOCMINE,DocMine: NLP for Dutch municipal decision archives,"Extract decisions, dates and responsible services from council minutes to build a searchable archive.",City innovation fund,finished,2021-10-01,2022-01-15,2022-03-01,2023-08-31
+WARMWIJK,WarmWijk: neighbourhood retrofit roadmaps,"Thermal scans, building typologies and citizen workshops to plan street-by-street retrofits.",Interreg,running,2022-11-15,2023-05-01,2023-09-01,2026-02-28
+SENSEHOME,SenseHome: low-cost monitoring for heat pump performance,Sensor kits and a cloud platform to verify real-world heat pump efficiency in retrofitted homes.,VLAIO TETRA,running,2023-06-01,2023-10-10,2024-01-01,2025-12-31
+ENERGYCOMM,Energy communities pilot Demerland,Early pilot on shared solar production in two villages.,Provincial climate fund,finished,2020-05-01,2020-09-01,2021-01-01,2022-12-31
+SENIORLINK,SeniorLink: inclusive digital services for older citizens,"Co-design of the city's digital counter with seniors, including assisted-use scenarios.",City innovation fund,approved,2025-01-20,2025-05-05,2025-10-01,2027-03-31
+AIAUDIT,AI Audit Toolkit for SMEs,Practical checklist and tooling to audit ML systems against upcoming regulation.,VLAIO TETRA,submitted,2025-06-30,,2026-01-01,2027-12-31
+SHELFVISION,ShelfVision: computer vision for shelf availability,Camera-based detection of empty shelves. Not funded.,VLAIO TETRA,rejected,2022-06-15,,,
