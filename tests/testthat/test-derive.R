@@ -60,3 +60,16 @@ test_that("filter_graph drops hidden projects and their edges", {
   all <- filter_graph(g, pe, hide_rejected = FALSE, status_filter = STATUSES)
   expect_equal(nrow(all$nodes), nrow(g$nodes))
 })
+
+test_that("ego_graph keeps the centre and its direct neighbours only", {
+  g <- list(
+    nodes = tibble::tibble(id = c("a", "b", "c", "d")),
+    edges = tibble::tibble(from = c("a", "b", "c"), to = c("b", "c", "d"))
+  )
+  ego <- ego_graph(g, "b")
+  expect_setequal(ego$nodes$id, c("a", "b", "c"))
+  expect_equal(nrow(ego$edges), 2)
+  expect_setequal(ego_graph(g, "b", order = 2)$nodes$id, c("a", "b", "c", "d"))
+  expect_identical(ego_graph(g, NULL), g)
+  expect_identical(ego_graph(g, "zzz"), g)
+})

@@ -179,3 +179,55 @@ filter_graph <- function(graph, projects_eff, hide_rejected = TRUE,
     edges = dplyr::filter(graph$edges, !from %in% dropped, !to %in% dropped)
   )
 }
+
+#' Ego view: a node and its direct neighbours
+#'
+#' @param graph Result of [build_graph()] / [filter_graph()].
+#' @param center Node id, or `NULL` for the whole graph.
+#' @param order Number of steps away from `center` to keep.
+#' @return `graph` restricted to nodes within `order` steps of `center`, and
+#'   the edges between them. Unchanged if `center` is `NULL` or not present.
+ego_graph <- function(graph, center, order = 1) {
+  if (is.null(center) || !center %in% graph$nodes$id) return(graph)
+  keep <- center
+  for (i in seq_len(order)) {
+    hit <- graph$edges$from %in% keep | graph$edges$to %in% keep
+    keep <- union(keep, c(graph$edges$from[hit], graph$edges$to[hit]))
+  }
+  list(
+    nodes = dplyr::filter(graph$nodes, id %in% keep),
+    edges = dplyr::filter(graph$edges, from %in% keep, to %in% keep)
+  )
+}
+
+#' Details of one node, for the side panel
+#'
+#' @param id Node id as made by [build_graph()].
+#' @param tables Named list from [read_all()].
+#' @param projects_eff Result of [projects_eff()].
+#' @return Named character vector (field -> value), empty fields dropped;
+#'   `NULL` for an unknown id.
+node_details <- function(id, tables, projects_eff) {
+  if (is.null(id)) return(NULL)
+  prefix <- sub(":.*$", "", id)
+  key <- sub("^[a-z]+:", "", id)
+  row <- switch(prefix,
+    emp = dplyr::filter(tables$employee, email == key),
+    grp = dplyr::filter(tables$research_group, abbreviation == key),
+    skill = dplyr::filter(tables$skill, tolower(name) == key),
+    proj = projects_eff |>
+      dplyr::filter(acronym == key) |>
+      dplyr::select(acronym, title, status, eff_status, mismatch_reason,
+                    funding_programme, total_budget, start_date, end_date,
+                    duration_months, description),
+    comp = dplyr::filter(tables$company, name == key),
+    dept = tables$company_department |>
+      dplyr::filter(paste0(company, "|", name) == key) |>
+      dplyr::mutate(key_goals = purrr::map_chr(key_goals, \(g) paste(g, collapse = "; "))),
+    con = dplyr::filter(tables$external_contact, email == key),
+    NULL
+  )
+  if (is.null(row) || nrow(row) == 0) return(NULL)
+  vals <- vapply(row[1, ], \(v) if (is.na(v[[1]])) "" else format(v[[1]]), character(1))
+  vals[nzchar(vals)]
+}
