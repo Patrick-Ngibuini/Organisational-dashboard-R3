@@ -51,6 +51,18 @@ projects_eff <- function(projects, funds_group, ref_date = Sys.Date()) {
     )
 }
 
+#' Projects whose stored status disagrees with their dates
+#'
+#' @param projects_eff Result of [projects_eff()].
+#' @return The mismatching projects, earliest start first, with the columns the
+#'   status-check table shows.
+status_check_table <- function(projects_eff) {
+  projects_eff |>
+    dplyr::filter(status_mismatch) |>
+    dplyr::arrange(start_date) |>
+    dplyr::select(acronym, title, status, eff_status, mismatch_reason, start_date, end_date)
+}
+
 #' Total group membership per employee
 #'
 #' @param member_of Tibble from [read_member_of()].
