@@ -45,7 +45,8 @@ server <- function(input, output, session) {
 
   filtered_graph <- reactive({
     build_graph(tables, projects_eff()) |>
-      filter_graph(projects_eff(), input$hide_rejected, input$status_filter, input$period)
+      filter_graph(projects_eff(), input$hide_rejected, input$status_filter, input$period,
+                   input$group %||% character())
   })
 
   # Written by observers only (node clicks, table row selections).

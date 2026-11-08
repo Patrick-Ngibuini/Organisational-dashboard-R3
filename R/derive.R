@@ -51,6 +51,18 @@ projects_eff <- function(projects, funds_group, ref_date = Sys.Date()) {
     )
 }
 
+#' Projects whose stored status disagrees with their dates
+#'
+#' @param projects_eff Result of [projects_eff()].
+#' @return The mismatching projects, earliest start first, with the columns the
+#'   status-check table shows.
+status_check_table <- function(projects_eff) {
+  projects_eff |>
+    dplyr::filter(status_mismatch) |>
+    dplyr::arrange(start_date) |>
+    dplyr::select(acronym, title, status, eff_status, mismatch_reason, start_date, end_date)
+}
+
 #' Total group membership per employee
 #'
 #' @param member_of Tibble from [read_member_of()].
@@ -163,8 +175,12 @@ build_graph <- function(tables, projects_eff) {
 #' @param hide_rejected Drop rejected projects.
 #' @param status_filter Effective statuses to keep.
 #' @param period Length-2 Date vector.
+#' @param group Research group abbreviations to keep. `NULL` (or every group)
+#'   means no group filter. Otherwise the graph keeps the selected groups, their
+#'   members, the projects they fund, the skills of those members, the contacts
+#'   on those projects and those contacts' departments and companies.
 filter_graph <- function(graph, projects_eff, hide_rejected = TRUE,
-                         status_filter = STATUSES, period = NULL) {
+                         status_filter = STATUSES, period = NULL, group = NULL) {
   keep <- projects_eff |>
     dplyr::filter(eff_status %in% (status_filter %||% character()))
   if (isTRUE(hide_rejected)) keep <- dplyr::filter(keep, eff_status != "rejected")
@@ -174,9 +190,30 @@ filter_graph <- function(graph, projects_eff, hide_rejected = TRUE,
                       (start_date <= period[2] & end_date >= period[1]))
   }
   dropped <- paste0("proj:", setdiff(projects_eff$acronym, keep$acronym))
-  list(
+  graph <- list(
     nodes = dplyr::filter(graph$nodes, !id %in% dropped),
     edges = dplyr::filter(graph$edges, !from %in% dropped, !to %in% dropped)
+  )
+  filter_graph_by_group(graph, group)
+}
+
+# Group filter: follow the edges outward from the selected groups.
+filter_graph_by_group <- function(graph, group) {
+  all_groups <- graph$nodes$id[graph$nodes$type == "group"]
+  grp <- paste0("grp:", group)
+  if (is.null(group) || all(all_groups %in% grp)) return(graph)
+
+  e <- graph$edges
+  ends_from <- \(type, from_ids) e$to[e$type == type & e$from %in% from_ids]
+  emp <- e$from[e$type == "member_of" & e$to %in% grp]
+  proj <- e$from[e$type == "funds_group" & e$to %in% grp]
+  con <- e$from[e$type == "participates_in" & e$to %in% proj]
+  dept <- ends_from("works_at", con)
+  keep <- c(intersect(grp, all_groups), emp, proj, ends_from("has_skill", emp),
+            con, dept, ends_from("part_of", dept))
+  list(
+    nodes = dplyr::filter(graph$nodes, id %in% keep),
+    edges = dplyr::filter(graph$edges, from %in% keep, to %in% keep)
   )
 }
 

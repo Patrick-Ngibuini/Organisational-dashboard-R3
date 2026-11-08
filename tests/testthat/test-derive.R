@@ -73,3 +73,19 @@ test_that("ego_graph keeps the centre and its direct neighbours only", {
   expect_identical(ego_graph(g, NULL), g)
   expect_identical(ego_graph(g, "zzz"), g)
 })
+
+test_that("group filter keeps the group's members, funded projects and their links", {
+  g <- build_graph(tables, pe)
+  f <- filter_graph(g, pe, hide_rejected = FALSE, status_filter = STATUSES, group = "HCD")
+  expect_equal(filter(f$nodes, type == "group")$id, "grp:HCD")
+  members <- tables$member_of$employee[tables$member_of$research_group == "HCD"]
+  expect_setequal(filter(f$nodes, type == "employee")$id, paste0("emp:", members))
+  funded <- tables$funds_group$project[tables$funds_group$research_group == "HCD"]
+  expect_setequal(filter(f$nodes, type == "project")$id, paste0("proj:", funded))
+  expect_true(all(c(f$edges$from, f$edges$to) %in% f$nodes$id))
+  # no group filter when every group is selected, or when group is NULL
+  expect_equal(nrow(filter_graph(g, pe, FALSE, STATUSES, group = tables$research_group$abbreviation)$nodes), nrow(g$nodes))
+  expect_equal(nrow(filter_graph(g, pe, FALSE, STATUSES)$nodes), nrow(g$nodes))
+  # nothing selected -> nothing group-related
+  expect_equal(nrow(filter_graph(g, pe, FALSE, STATUSES, group = character())$nodes), 0)
+})
