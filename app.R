@@ -4,6 +4,7 @@ library(dplyr)
 library(tidyr)
 library(purrr)
 library(lubridate)
+library(visNetwork)
 
 for (f in list.files(here::here("R"), pattern = "\\.R$", full.names = TRUE)) source(f)
 
@@ -54,7 +55,7 @@ server <- function(input, output, session) {
   period <- reactive(input$period)
   status_filter <- reactive(input$status_filter)
 
-  mod_network_server("network", projects_eff, filtered_graph, selected_node)
+  mod_network_server("network", tables, projects_eff, filtered_graph, selected_node)
   mod_projects_server("projects", projects_eff, selected_node, group, period, status_filter)
   mod_people_server("people", projects_eff, group)
   mod_kpis_server("kpis", projects_eff, group)
