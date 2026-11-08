@@ -63,6 +63,30 @@ status_check_table <- function(projects_eff) {
     dplyr::select(acronym, title, status, eff_status, mismatch_reason, start_date, end_date)
 }
 
+#' Budget per research group, one row per funds_group edge
+#'
+#' Projects are kept when their effective status is in `status_filter` and
+#' their funding programme is in `programme`.
+#'
+#' @param projects_eff Result of [projects_eff()].
+#' @param funds_group Tibble from [read_funds_group()].
+#' @param programme Funding programmes to keep; `NULL` keeps all.
+#' @param status_filter Effective statuses to keep.
+#' @return `research_group`, `project`, `budget`, `funding_programme`,
+#'   `eff_status`, ordered by group total (largest first).
+budget_split_table <- function(projects_eff, funds_group, programme = NULL,
+                               status_filter = STATUSES) {
+  keep <- projects_eff |>
+    dplyr::filter(eff_status %in% status_filter,
+                  is.null(programme) | funding_programme %in% programme) |>
+    dplyr::select(project = acronym, funding_programme, eff_status)
+  funds_group |>
+    dplyr::inner_join(keep, by = "project") |>
+    dplyr::mutate(group_total = sum(budget), .by = research_group) |>
+    dplyr::arrange(dplyr::desc(group_total), research_group, dplyr::desc(budget)) |>
+    dplyr::select(research_group, project, budget, funding_programme, eff_status)
+}
+
 #' Total group membership per employee
 #'
 #' @param member_of Tibble from [read_member_of()].
