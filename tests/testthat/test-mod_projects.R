@@ -59,3 +59,41 @@ test_that("budget_bar renders and follows the status filter", {
     }
   )
 })
+
+test_that("timeline_table keeps dated projects and applies group, period and selection", {
+  all <- timeline_table(pe, tables$funds_group)
+  expect_equal(nrow(all), 9)  # SHELFVISION has no dates
+  expect_false("SHELFVISION" %in% all$acronym)
+  expect_false(is.unsorted(all$start_date))
+  expect_false(any(all$selected))
+
+  hcd <- timeline_table(pe, tables$funds_group, group = "HCD")
+  funded <- tables$funds_group$project[tables$funds_group$research_group == "HCD"]
+  expect_setequal(hcd$acronym, intersect(funded, all$acronym))
+  expect_equal(nrow(timeline_table(pe, tables$funds_group, group = c("DSAI", "HCD", "SET"))), 9)
+  expect_equal(nrow(timeline_table(pe, tables$funds_group, group = character())), 0)
+
+  late <- timeline_table(pe, tables$funds_group, period = as.Date(c("2026-06-01", "2027-12-31")))
+  expect_true(all(late$end_date >= as.Date("2026-06-01")))
+  expect_lt(nrow(late), 9)
+
+  sel <- timeline_table(pe, tables$funds_group, selected_node = "proj:XAICARE")
+  expect_equal(sel$acronym[sel$selected], "XAICARE")
+})
+
+test_that("timeline renders and follows selected_node", {
+  sel <- reactiveVal(NULL)
+  testServer(
+    mod_projects_server,
+    args = list(tables = tables, projects_eff = reactive(pe), selected_node = sel,
+                group = reactive(c("DSAI", "HCD", "SET")),
+                period = reactive(as.Date(c("2000-01-01", "2100-12-31"))),
+                status_filter = reactive(STATUSES)),
+    {
+      expect_equal(nrow(timeline_data()), 9)
+      expect_true(nchar(output$timeline) > 0)
+      sel("proj:CITYPULSE")
+      expect_equal(timeline_data()$acronym[timeline_data()$selected], "CITYPULSE")
+    }
+  )
+})

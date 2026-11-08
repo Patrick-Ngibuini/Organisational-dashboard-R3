@@ -1,6 +1,11 @@
 # Projects tab.
-# Built: status_check() -> check_table (Q3), budget_split() -> budget_bar (Q6).
-# Still to come: timeline (Q4: projects_eff, group, period, selected_node).
+# Built: status_check() -> check_table (Q3), budget_split() -> budget_bar (Q6),
+# timeline_data() -> timeline (Q4).
+
+STATUS_COLOURS <- c(
+  draft = "#B8B8B8", submitted = "#F2B134", approved = "#4C78A8",
+  running = "#54A24B", finished = "#7F7F7F", rejected = "#E45756"
+)
 
 mod_projects_ui <- function(id, programmes) {
   ns <- NS(id)
@@ -19,7 +24,11 @@ mod_projects_ui <- function(id, programmes) {
                   selected = programmes, multiple = TRUE),
       plotly::plotlyOutput(ns("budget_bar"), height = "100%")
     ),
-    nav_panel("Timeline", p("Q4 · coming soon"))
+    nav_panel(
+      "Timeline",
+      p(class = "text-muted", "Dated projects; the project selected elsewhere is outlined."),
+      plotly::plotlyOutput(ns("timeline"), height = "100%")
+    )
   )
 }
 
@@ -58,6 +67,40 @@ mod_projects_server <- function(id, tables, projects_eff, selected_node, group, 
         plotly::layout(barmode = "stack",
                        xaxis = list(title = "Research group"),
                        yaxis = list(title = "Budget (EUR)"))
+    })
+
+    # Dated projects for the chosen groups and period; marks the selected project.
+    timeline_data <- reactive({
+      timeline_table(projects_eff(), tables$funds_group, group() %||% character(),
+                     period(), selected_node())
+    })
+
+    # Q4
+    output$timeline <- plotly::renderPlotly({
+      d <- timeline_data()
+      validate(need(nrow(d) > 0, "No dated projects match the selected groups and period."))
+      day_ms <- 86400000
+      d <- d |>
+        dplyr::mutate(
+          acronym = factor(acronym, levels = rev(acronym)),  # earliest on top
+          start_ms = as.numeric(start_date) * day_ms,
+          length_ms = as.numeric(end_date - start_date) * day_ms,
+          hover = paste0("<b>", acronym, "</b> · ", title,
+                         "<br>", start_date, " to ", end_date,
+                         "<br>status: ", eff_status,
+                         ifelse(status_mismatch, paste0(" (", mismatch_reason, ")"), ""),
+                         "<br>groups: ", dplyr::coalesce(groups, "none")),
+          outline = ifelse(selected, "#000000", "rgba(0,0,0,0)"),
+          outline_width = ifelse(selected, 3, 0)
+        )
+      plotly::plot_ly(d, type = "bar", orientation = "h", y = ~acronym, x = ~length_ms,
+                      base = ~start_ms, color = ~eff_status, colors = STATUS_COLOURS,
+                      text = ~hover, hoverinfo = "text",
+                      marker = list(line = list(color = ~outline, width = ~outline_width))) |>
+        plotly::layout(barmode = "overlay",
+                       xaxis = list(type = "date", title = ""),
+                       yaxis = list(title = ""),
+                       legend = list(title = list(text = "Status")))
     })
 
     # Row click -> selected_node (state only, no output values computed here)

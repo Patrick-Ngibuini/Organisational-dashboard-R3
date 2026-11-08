@@ -87,6 +87,43 @@ budget_split_table <- function(projects_eff, funds_group, programme = NULL,
     dplyr::select(research_group, project, budget, funding_programme, eff_status)
 }
 
+#' One row per dated project, for the timeline
+#'
+#' Projects without start and end date (e.g. rejected proposals) cannot be drawn
+#' and are left out.
+#'
+#' @param projects_eff Result of [projects_eff()].
+#' @param funds_group Tibble from [read_funds_group()].
+#' @param group Research groups to keep (projects they fund). `NULL`, or every
+#'   funded group, means no group filter.
+#' @param period Length-2 Date vector; keeps projects that overlap it.
+#' @param selected_node Node id; its project gets `selected = TRUE`.
+#' @return `acronym`, `title`, `status`, `eff_status`, `status_mismatch`,
+#'   `mismatch_reason`, `start_date`, `end_date`, `groups` (text), `selected`,
+#'   earliest start first.
+timeline_table <- function(projects_eff, funds_group, group = NULL, period = NULL,
+                           selected_node = NULL) {
+  groups_txt <- funds_group |>
+    dplyr::summarise(groups = paste(sort(research_group), collapse = ", "), .by = project)
+
+  d <- projects_eff |>
+    dplyr::filter(!is.na(start_date), !is.na(end_date)) |>
+    dplyr::left_join(groups_txt, by = c("acronym" = "project"))
+
+  if (!is.null(group) && !all(unique(funds_group$research_group) %in% group)) {
+    funded <- funds_group$project[funds_group$research_group %in% group]
+    d <- dplyr::filter(d, acronym %in% funded)
+  }
+  if (!is.null(period)) {
+    d <- dplyr::filter(d, start_date <= period[2], end_date >= period[1])
+  }
+  d |>
+    dplyr::arrange(start_date, acronym) |>
+    dplyr::mutate(selected = paste0("proj:", acronym) %in% (selected_node %||% character())) |>
+    dplyr::select(acronym, title, status, eff_status, status_mismatch, mismatch_reason,
+                  start_date, end_date, groups, selected)
+}
+
 #' Total group membership per employee
 #'
 #' @param member_of Tibble from [read_member_of()].
