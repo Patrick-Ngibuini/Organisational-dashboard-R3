@@ -32,7 +32,7 @@ ui <- page_navbar(
                 selected = group_choices, multiple = TRUE)
   ),
   nav_panel("Network", mod_network_ui("network")),
-  nav_panel("Projects", mod_projects_ui("projects")),
+  nav_panel("Projects", mod_projects_ui("projects", sort(unique(na.omit(tables$project$funding_programme))))),
   nav_panel("People & skills", mod_people_ui("people")),
   nav_panel("KPIs & export", mod_kpis_ui("kpis"))
 )
@@ -57,7 +57,7 @@ server <- function(input, output, session) {
   status_filter <- reactive(input$status_filter)
 
   mod_network_server("network", tables, projects_eff, filtered_graph, selected_node)
-  mod_projects_server("projects", projects_eff, selected_node, group, period, status_filter)
+  mod_projects_server("projects", tables, projects_eff, selected_node, group, period, status_filter)
   mod_people_server("people", projects_eff, group)
   mod_kpis_server("kpis", projects_eff, group)
 }
