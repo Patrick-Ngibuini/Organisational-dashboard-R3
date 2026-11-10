@@ -19,7 +19,7 @@ test_that("selecting a row in check_table writes selected_node", {
   testServer(
     mod_projects_server,
     args = list(tables = tables, projects_eff = reactive(pe), selected_node = sel, group = reactive("DSAI"),
-                period = reactive(NULL), status_filter = reactive(STATUSES)),
+                period = reactive(NULL), status_filter = reactive(STATUSES), hide_rejected = reactive(FALSE)),
     {
       session$setInputs(check_table_rows_selected = 2)
       expect_equal(sel(), paste0("proj:", status_check_table(pe)$acronym[2]))
@@ -48,7 +48,8 @@ test_that("budget_bar renders and follows the status filter", {
   testServer(
     mod_projects_server,
     args = list(tables = tables, projects_eff = reactive(pe), selected_node = reactiveVal(NULL),
-                group = reactive("DSAI"), period = reactive(NULL), status_filter = status),
+                group = reactive("DSAI"), period = reactive(NULL), status_filter = status,
+                hide_rejected = reactive(FALSE)),
     {
       session$setInputs(programme = unique(tables$project$funding_programme))
       all_rows <- nrow(budget_split())
@@ -88,7 +89,7 @@ test_that("timeline renders and follows selected_node", {
     args = list(tables = tables, projects_eff = reactive(pe), selected_node = sel,
                 group = reactive(c("DSAI", "HCD", "SET")),
                 period = reactive(as.Date(c("2000-01-01", "2100-12-31"))),
-                status_filter = reactive(STATUSES)),
+                status_filter = reactive(STATUSES), hide_rejected = reactive(FALSE)),
     {
       expect_equal(nrow(timeline_data()), 9)
       expect_true(nchar(output$timeline) > 0)
@@ -96,4 +97,17 @@ test_that("timeline renders and follows selected_node", {
       expect_equal(timeline_data()$acronym[timeline_data()$selected], "CITYPULSE")
     }
   )
+})
+
+test_that("budget_split_table hides rejected projects by default", {
+  shown <- budget_split_table(pe, tables$funds_group)
+  expect_false("SHELFVISION" %in% shown$project)
+  withr::with_options(list(), {
+    all <- budget_split_table(pe, tables$funds_group, hide_rejected = FALSE)
+    expect_true("SHELFVISION" %in% all$project)
+  })
+  vlaio <- budget_split_table(pe, tables$funds_group, "VLAIO TETRA")
+  by_group <- vlaio |> summarise(b = sum(budget), .by = research_group)
+  expect_equal(by_group$research_group, c("DSAI", "SET", "HCD"))  # sorted by total
+  expect_equal(by_group$b, c(740000, 210000, 90000))
 })

@@ -32,7 +32,8 @@ mod_projects_ui <- function(id, programmes) {
   )
 }
 
-mod_projects_server <- function(id, tables, projects_eff, selected_node, group, period, status_filter) {
+mod_projects_server <- function(id, tables, projects_eff, selected_node, group, period, status_filter,
+                                hide_rejected) {
   moduleServer(id, function(input, output, session) {
     status_check <- reactive(status_check_table(projects_eff()))
 
@@ -50,7 +51,7 @@ mod_projects_server <- function(id, tables, projects_eff, selected_node, group, 
     # Budget per group for the chosen programmes and statuses.
     budget_split <- reactive({
       budget_split_table(projects_eff(), tables$funds_group,
-                         input$programme %||% character(), status_filter())
+                         input$programme %||% character(), status_filter(), hide_rejected())
     })
 
     # Q6
@@ -90,12 +91,14 @@ mod_projects_server <- function(id, tables, projects_eff, selected_node, group, 
                          "<br>status: ", eff_status,
                          ifelse(status_mismatch, paste0(" (", mismatch_reason, ")"), ""),
                          "<br>groups: ", dplyr::coalesce(groups, "none")),
+          label = paste("ends", format(end_date, "%b %Y")),
           outline = ifelse(selected, "#000000", "rgba(0,0,0,0)"),
           outline_width = ifelse(selected, 3, 0)
         )
       plotly::plot_ly(d, type = "bar", orientation = "h", y = ~acronym, x = ~length_ms,
                       base = ~start_ms, color = ~eff_status, colors = STATUS_COLOURS,
-                      text = ~hover, hoverinfo = "text",
+                      text = ~label, textposition = "outside", cliponaxis = FALSE,
+                      hovertext = ~hover, hoverinfo = "text",
                       marker = list(line = list(color = ~outline, width = ~outline_width))) |>
         plotly::layout(barmode = "overlay",
                        xaxis = list(type = "date", title = ""),

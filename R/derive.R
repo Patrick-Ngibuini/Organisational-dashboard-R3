@@ -72,12 +72,14 @@ status_check_table <- function(projects_eff) {
 #' @param funds_group Tibble from [read_funds_group()].
 #' @param programme Funding programmes to keep; `NULL` keeps all.
 #' @param status_filter Effective statuses to keep.
+#' @param hide_rejected Drop rejected projects.
 #' @return `research_group`, `project`, `budget`, `funding_programme`,
 #'   `eff_status`, ordered by group total (largest first).
 budget_split_table <- function(projects_eff, funds_group, programme = NULL,
-                               status_filter = STATUSES) {
+                               status_filter = STATUSES, hide_rejected = TRUE) {
   keep <- projects_eff |>
     dplyr::filter(eff_status %in% status_filter,
+                  !(hide_rejected & eff_status == "rejected"),
                   is.null(programme) | funding_programme %in% programme) |>
     dplyr::select(project = acronym, funding_programme, eff_status)
   funds_group |>
@@ -122,6 +124,74 @@ timeline_table <- function(projects_eff, funds_group, group = NULL, period = NUL
     dplyr::mutate(selected = paste0("proj:", acronym) %in% (selected_node %||% character())) |>
     dplyr::select(acronym, title, status, eff_status, status_mismatch, mismatch_reason,
                   start_date, end_date, groups, selected)
+}
+
+#' KPIs for the selected research groups and years
+#'
+#' A project counts in the year of its start date (application date when it has
+#' no start date, e.g. rejected proposals). Its budget is the part funded by the
+#' selected groups, and rejected projects add no budget.
+#'
+#' @param projects_eff Result of [projects_eff()].
+#' @param funds_group,member_of,employees Tibbles from the `read_*()` functions.
+#' @param group Research groups to include; `NULL` means all.
+#' @param year_range Length-2 integer vector; `NULL` means all years.
+#' @return `list(cards, years, projects)`:
+#'   `cards` one row with `projects`, `running`, `budget`, `success_rate`
+#'   (approved / (approved + rejected), `NA` without decisions), `researchers`
+#'   (active members) and `fte` (sum of their group percentages / 100);
+#'   `years` budget and project count per year and group;
+#'   `projects` the projects behind the numbers.
+kpi_summary <- function(projects_eff, funds_group, member_of, employees,
+                        group = NULL, year_range = NULL) {
+  groups <- group %||% union(funds_group$research_group, member_of$research_group)
+  in_years <- \(year) {
+    if (is.null(year_range)) !is.na(year) else !is.na(year) & year >= year_range[1] & year <= year_range[2]
+  }
+
+  pe <- projects_eff |>
+    dplyr::mutate(year = lubridate::year(dplyr::coalesce(start_date, application_date)))
+  funded <- funds_group |>
+    dplyr::filter(research_group %in% groups) |>
+    dplyr::inner_join(dplyr::select(pe, acronym, year, eff_status), by = c("project" = "acronym")) |>
+    dplyr::filter(in_years(year))
+
+  projects <- pe |>
+    dplyr::filter(acronym %in% funded$project) |>
+    dplyr::left_join(
+      funded |> dplyr::summarise(budget = sum(budget), .by = project),
+      by = c("acronym" = "project")
+    ) |>
+    dplyr::mutate(budget = ifelse(eff_status == "rejected", 0, budget)) |>
+    dplyr::arrange(year, acronym) |>
+    dplyr::select(acronym, title, year, status, eff_status, budget)
+
+  active <- employees$email[employees$active]
+  members <- dplyr::filter(member_of, research_group %in% groups, employee %in% active)
+  approved <- sum(projects$status %in% c("approved", "running", "finished"))
+  rejected <- sum(projects$status == "rejected")
+
+  n_projects <- nrow(projects)
+  n_running <- sum(projects$eff_status == "running")
+  total_budget <- sum(projects$budget)
+  cards <- dplyr::tibble(
+    projects = n_projects,
+    running = n_running,
+    budget = total_budget,
+    success_rate = if (approved + rejected > 0) approved / (approved + rejected) else NA_real_,
+    researchers = dplyr::n_distinct(members$employee),
+    fte = sum(members$percentage) / 100
+  )
+
+  years_seq <- if (is.null(year_range)) sort(unique(projects$year)) else seq(year_range[1], year_range[2])
+  years <- funded |>
+    dplyr::filter(eff_status != "rejected") |>
+    dplyr::summarise(budget = sum(budget), projects = dplyr::n(), .by = c(year, research_group)) |>
+    tidyr::complete(year = years_seq, research_group = sort(groups),
+                    fill = list(budget = 0, projects = 0)) |>
+    dplyr::arrange(year, research_group)
+
+  list(cards = cards, years = years, projects = projects)
 }
 
 #' Total group membership per employee
