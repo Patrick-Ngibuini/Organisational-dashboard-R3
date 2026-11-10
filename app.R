@@ -20,6 +20,9 @@ compute_projects_eff <- projects_eff
 
 period_default <- range(c(tables$project$start_date, tables$project$end_date), na.rm = TRUE)
 group_choices <- tables$research_group$abbreviation
+kpi_years <- tables$project |>
+  transmute(year = year(coalesce(start_date, application_date))) |>
+  pull(year) |> range(na.rm = TRUE)
 
 ui <- page_navbar(
   title = "R3 ReE Research Network",
@@ -34,7 +37,7 @@ ui <- page_navbar(
   nav_panel("Network", mod_network_ui("network")),
   nav_panel("Projects", mod_projects_ui("projects", sort(unique(na.omit(tables$project$funding_programme))))),
   nav_panel("People & skills", mod_people_ui("people")),
-  nav_panel("KPIs & export", mod_kpis_ui("kpis"))
+  nav_panel("KPIs & export", mod_kpis_ui("kpis", kpi_years))
 )
 
 server <- function(input, output, session) {
@@ -55,11 +58,13 @@ server <- function(input, output, session) {
   group <- reactive(input$group)
   period <- reactive(input$period)
   status_filter <- reactive(input$status_filter)
+  hide_rejected <- reactive(input$hide_rejected)
 
   mod_network_server("network", tables, projects_eff, filtered_graph, selected_node)
-  mod_projects_server("projects", tables, projects_eff, selected_node, group, period, status_filter)
+  mod_projects_server("projects", tables, projects_eff, selected_node, group, period, status_filter,
+                     hide_rejected)
   mod_people_server("people", projects_eff, group)
-  mod_kpis_server("kpis", projects_eff, group)
+  mod_kpis_server("kpis", tables, projects_eff, group)
 }
 
 shinyApp(ui, server)
